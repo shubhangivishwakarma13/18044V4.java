@@ -1,329 +1,288 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.sql.*;
-import java.util.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import java.util.List;
+import java.util.ArrayList;
 
-class Product 
-{
-    private int id;
-    private String name;
-    private int price;
+public class StationeryShopGUI {
+    private JFrame frame;
+    private JTextField customerNameField;
+    private JTextField productIdField;
+    private JTextField quantityField;
+    private JTextArea orderSummaryArea;
+    private JLabel totalAmountLabel;
+    private List<OrderItem> orderItems;
+    private int totalAmount;
 
-    public Product(int id, String name, int price) 
-    {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-    }
+    public StationeryShopGUI() {
+        frame = new JFrame("Stationery Shop");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 600);
+        frame.setLayout(new BorderLayout());
 
-    public int getId() 
-    {
-        return id;
-    }
+        // Top Panel: Customer name input
+        JPanel topPanel = new JPanel(new FlowLayout());
+        topPanel.add(new JLabel("Customer Name: "));
+        customerNameField = new JTextField(20);
+        topPanel.add(customerNameField);
+        JLabel errorLabel = new JLabel();
+        errorLabel.setForeground(Color.RED);
+        errorLabel.setVisible(false);
+        topPanel.add(errorLabel);
+        frame.add(topPanel, BorderLayout.NORTH);
 
-    public String getName() 
-    {
-        return name;
-    }
+        customerNameField.getDocument().addDocumentListener(new DocumentListener() {
+            private void validateCustomerName() {
+                String customerName = customerNameField.getText().trim();
+                if (!customerName.isEmpty() && !customerName.matches("^[a-zA-Z\\s]+$")) {
+                    customerNameField.setBackground(Color.PINK);
+                    errorLabel.setText("Customer name can only contain letters and spaces.");
+                    errorLabel.setVisible(true);
+                } else {
+                    customerNameField.setBackground(Color.WHITE);
+                    errorLabel.setVisible(false);
+                }
+            }
 
-    public int getPrice() 
-    {
-        return price;
-    }
-
-    public String toString() 
-    {
-        return id + ". " + name + " (Rupees " + price + ")";
-    }
-}
-
-public class StationeryShopJDBC_GUI 
-{
-
-    private static final String DB_URL = "jdbc:mysql://localhost:3307/syitdb";
-    private static final String DB_USERNAME = "root";
-    private static final String DB_PASSWORD = "";
-
-    private static JFrame frame;
-    private static JComboBox<String> productComboBox;
-    private static JTextField quantityField;
-    private static JTextArea orderTextArea;
-    private static JButton addButton, removeButton, finalizeButton;
-
-    private static java.util.List<OrderItem> orderItems = new java.util.ArrayList<>();
-    private static int customerId = -1;
-
-    public static void main(String[] args) 
-    {
-        SwingUtilities.invokeLater(() -> 
-        {
-            frame = new JFrame("Stationery Shop");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(600, 400);
-            frame.setLayout(new BorderLayout());
-
-            JPanel inputPanel = new JPanel();
-            inputPanel.setLayout(new GridLayout(3, 2));
-
-            JLabel customerLabel = new JLabel("Enter customer name:");
-            JTextField customerField = new JTextField();
-
-            JLabel productLabel = new JLabel("Select product:");
-            productComboBox = new JComboBox<>();
-            loadProducts();
-
-            JLabel quantityLabel = new JLabel("Enter quantity:");
-            quantityField = new JTextField();
-
-            inputPanel.add(customerLabel);
-            inputPanel.add(customerField);
-            inputPanel.add(productLabel);
-            inputPanel.add(productComboBox);
-            inputPanel.add(quantityLabel);
-            inputPanel.add(quantityField);
-
-            frame.add(inputPanel, BorderLayout.NORTH);
-
-            orderTextArea = new JTextArea();
-            orderTextArea.setEditable(false);
-            JScrollPane scrollPane = new JScrollPane(orderTextArea);
-            frame.add(scrollPane, BorderLayout.CENTER);
-
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.setLayout(new FlowLayout());
-
-            addButton = new JButton("Add Item");
-            removeButton = new JButton("Remove Item");
-            finalizeButton = new JButton("Finalize Order");
-
-            buttonPanel.add(addButton);
-            buttonPanel.add(removeButton);
-            buttonPanel.add(finalizeButton);
-
-            frame.add(buttonPanel, BorderLayout.SOUTH);
-
-            addButton.addActionListener(e -> addItem(customerField.getText()));
-            removeButton.addActionListener(e -> removeItem());
-            finalizeButton.addActionListener(e -> finalizeOrder(customerField.getText()));
-
-            frame.setVisible(true);
+            @Override
+            public void insertUpdate(DocumentEvent e) { validateCustomerName(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { validateCustomerName(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { validateCustomerName(); }
         });
+
+        // Center Panel: Product list and order summary
+        JPanel centerPanel = new JPanel(new GridLayout(1, 2));
+
+        JTextArea productListArea = new JTextArea("ID\tName\tPrice (₹)\n" +
+                "1\tPen\t10\n" +
+                "2\tNotebook\t50\n" +
+                "3\tEraser\t5\n" +
+                "4\tMarker\t15\n" +
+                "5\tFolder\t20\n" +
+                "6\tPencil\t5\n" +
+                "7\tHighlighter\t20\n" +
+                "8\tStapler\t55\n" +
+                "9\tGlue\t25\n" +
+                "10\tScissors\t60\n");
+        productListArea.setEditable(false);
+        centerPanel.add(new JScrollPane(productListArea));
+
+        JPanel orderSummaryPanel = new JPanel(new BorderLayout());
+        orderSummaryArea = new JTextArea();
+        orderSummaryArea.setEditable(false);
+        orderSummaryPanel.add(new JScrollPane(orderSummaryArea), BorderLayout.CENTER);
+        totalAmountLabel = new JLabel("Total Amount: ₹0");
+        orderSummaryPanel.add(totalAmountLabel, BorderLayout.SOUTH);
+        centerPanel.add(orderSummaryPanel);
+
+        frame.add(centerPanel, BorderLayout.CENTER);
+
+        // Bottom Panel: Input and buttons
+        JPanel bottomPanel = new JPanel(new FlowLayout());
+        bottomPanel.add(new JLabel("Product ID: "));
+        productIdField = new JTextField(5);
+        bottomPanel.add(productIdField);
+        bottomPanel.add(new JLabel("Quantity: "));
+        quantityField = new JTextField(5);
+        bottomPanel.add(quantityField);
+
+        JButton addOrderButton = new JButton("Add to Order");
+        JButton removeItemButton = new JButton("Remove Item");
+        JButton reduceQuantityButton = new JButton("Reduce Quantity");
+        JButton submitButton = new JButton("Submit Order");
+
+        bottomPanel.add(addOrderButton);
+        bottomPanel.add(removeItemButton);
+        bottomPanel.add(reduceQuantityButton);
+        bottomPanel.add(submitButton);
+
+        frame.add(bottomPanel, BorderLayout.SOUTH);
+
+        orderItems = new ArrayList<>();
+
+        addOrderButton.addActionListener(e -> handleAddOrder());
+        removeItemButton.addActionListener(e -> handleRemoveItem());
+        reduceQuantityButton.addActionListener(e -> handleReduceQuantity());
+        submitButton.addActionListener(e -> handleSubmitOrder());
+
+        frame.setVisible(true);
     }
 
-    private static void loadProducts() 
-    {
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) 
-        {
-            String query = "SELECT * FROM products";
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(query)) 
-            {
-                boolean dataFound = false;
-                while (rs.next()) 
-                {
-                    int id = rs.getInt("id");
-                    String name = rs.getString("name");
-                    int price = rs.getInt("price");
-                    productComboBox.addItem(new Product(id, name, price).toString());
-                    dataFound = true;
-                }
-                if (!dataFound) 
-                {
-                    JOptionPane.showMessageDialog(frame, "No products found in the database.");
-                }
-            }
-        } 
-        catch (SQLException e) 
-        {
-            JOptionPane.showMessageDialog(frame, "Error loading products: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    private static void addItem(String customerName) 
-    {
-        if (customerName == null || customerName.trim().isEmpty()) 
-        {
-            JOptionPane.showMessageDialog(frame, "Please enter a customer name.");
-            return;
-        }
-
-        if (customerId == -1) 
-        {
-            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) 
-            {
-                customerId = addCustomer(conn, customerName);
-            } 
-            catch (SQLException e) 
-            {
-                JOptionPane.showMessageDialog(frame, "Error adding customer: " + e.getMessage());
-                e.printStackTrace();
-                return;
-            }
-        }
-
-        String selectedProduct = (String) productComboBox.getSelectedItem();
-        if (selectedProduct == null) 
-        {
-            JOptionPane.showMessageDialog(frame, "Please select a product.");
-            return;
-        }
-
-        try 
-        {
-            int productId = Integer.parseInt(selectedProduct.substring(0, selectedProduct.indexOf(".")));
-            String name = selectedProduct.substring(selectedProduct.indexOf(" ") + 1, selectedProduct.indexOf("(")).trim();
-            int price = Integer.parseInt(selectedProduct.substring(selectedProduct.indexOf("Rupees") + 6, selectedProduct.indexOf(")")).trim());
+    private void handleAddOrder() {
+        try {
+            int productId = Integer.parseInt(productIdField.getText().trim());
             int quantity = Integer.parseInt(quantityField.getText().trim());
 
-            if (quantity <= 0) 
-            {
-                throw new NumberFormatException();
+            if (productId < 1 || productId > 10 || quantity <= 0) {
+                showError("Invalid Product ID or Quantity.");
+                return;
             }
 
-            Product product = new Product(productId, name, price);
-            orderItems.add(new OrderItem(product, quantity));
-            orderTextArea.append("Added: " + product.getName() + " x" + quantity + "\n");
-        } 
-        catch (NumberFormatException e) 
-        {
-            JOptionPane.showMessageDialog(frame, "Please enter a valid quantity (greater than 0).");
-        } 
-        catch (Exception e) 
-        {
-            JOptionPane.showMessageDialog(frame, "Error processing product: " + e.getMessage());
-            e.printStackTrace();
+            String productName = getProductById(productId);
+            int productPrice = getPriceById(productId);
+            orderItems.add(new OrderItem(productName, productPrice, quantity));
+            totalAmount += productPrice * quantity;
+
+            updateOrderSummary();
+        } catch (NumberFormatException e) {
+            showError("Product ID and Quantity must be numbers.");
         }
     }
 
-    private static void removeItem() 
-    {
-        String itemToRemove = JOptionPane.showInputDialog(frame, "Enter item name to remove:");
-
-        if (itemToRemove != null && !itemToRemove.isEmpty()) 
-        {
-            boolean found = false;
-            for (Iterator<OrderItem> iterator = orderItems.iterator(); iterator.hasNext();) 
-            {
-                OrderItem item = iterator.next();
-                if (item.getProduct().getName().equalsIgnoreCase(itemToRemove)) 
-                {
-                    iterator.remove();
-                    orderTextArea.append("Removed: " + item.getProduct().getName() + "\n");
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) 
-            {
-                JOptionPane.showMessageDialog(frame, "Item not found in the order.");
-            }
-        }
-    }
-
-    private static void finalizeOrder(String customerName) 
-    {
-        if (orderItems.isEmpty()) 
-        {
-            JOptionPane.showMessageDialog(frame, "No items in the order to finalize.");
+    private void handleRemoveItem() {
+        if (orderItems.isEmpty()) {
+            showError("No items to remove.");
             return;
         }
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD)) 
-        {
-            for (OrderItem item : orderItems) 
-            {
-                addOrder(conn, customerId, item.getProduct().getId(), item.getQuantity());
-            }
-            printOrderSummary(conn, customerId);
-            orderItems.clear();
-            orderTextArea.setText("");
-            JOptionPane.showMessageDialog(frame, "Order finalized successfully.");
-        } 
-        catch (SQLException e) 
-        {
-            JOptionPane.showMessageDialog(frame, "Error finalizing order: " + e.getMessage());
-            e.printStackTrace();
+        String[] itemNames = orderItems.stream().map(OrderItem::toString).toArray(String[]::new);
+        String selectedItem = (String) JOptionPane.showInputDialog(frame, "Select an item to remove:", "Remove Item",
+                JOptionPane.PLAIN_MESSAGE, null, itemNames, itemNames[0]);
+
+        if (selectedItem != null) {
+            orderItems.removeIf(item -> item.toString().equals(selectedItem));
+            updateOrderSummary();
         }
     }
 
-    private static int addCustomer(Connection conn, String name) throws SQLException 
-    {
-        String query = "INSERT INTO customers (name) VALUES (?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) 
-        {
-            pstmt.setString(1, name);
-            pstmt.executeUpdate();
-            try (ResultSet keys = pstmt.getGeneratedKeys()) 
-            {
-                if (keys.next()) 
-                {
-                    return keys.getInt(1);
+    private void handleReduceQuantity() {
+        if (orderItems.isEmpty()) {
+            showError("No items to reduce quantity.");
+            return;
+        }
+
+        String[] itemNames = orderItems.stream().map(OrderItem::toString).toArray(String[]::new);
+        String selectedItem = (String) JOptionPane.showInputDialog(frame, "Select an item to reduce quantity:", "Reduce Quantity",
+                JOptionPane.PLAIN_MESSAGE, null, itemNames, itemNames[0]);
+
+        if (selectedItem != null) {
+            for (OrderItem item : orderItems) {
+                if (item.toString().equals(selectedItem)) {
+                    String newQuantityText = JOptionPane.showInputDialog(frame, "Enter new quantity:");
+                    try {
+                        int newQuantity = Integer.parseInt(newQuantityText);
+                        if (newQuantity <= 0 || newQuantity >= item.getQuantity()) {
+                            showError("Invalid quantity.");
+                            return;
+                        }
+                        int difference = item.getQuantity() - newQuantity;
+                        item.reduceQuantity(difference);
+                        totalAmount -= difference * item.getPrice();
+
+                        if (item.getQuantity() == 0) {
+                            orderItems.remove(item);
+                        }
+                        updateOrderSummary();
+                        break;
+                    } catch (NumberFormatException e) {
+                        showError("Quantity must be a number.");
+                    }
                 }
             }
         }
-        throw new SQLException("Failed to retrieve customer ID.");
     }
 
-    private static void addOrder(Connection conn, int customerId, int productId, int quantity) throws SQLException 
-    {
-        String query = "INSERT INTO orders (customer_id, product_id, quantity) VALUES (?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(query)) 
-        {
-            pstmt.setInt(1, customerId);
-            pstmt.setInt(2, productId);
-            pstmt.setInt(3, quantity);
-            pstmt.executeUpdate();
+    private void handleSubmitOrder() {
+        String customerName = customerNameField.getText().trim();
+        if (customerName.isEmpty() || !customerName.matches("^[a-zA-Z\\s]+$")) {
+            showError("Invalid customer name.");
+            return;
+        }
+        if (orderItems.isEmpty()) {
+            showError("No items in the order.");
+            return;
+        }
+
+        JOptionPane.showMessageDialog(frame, "Order submitted successfully for " + customerName + "!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        orderItems.clear();
+        updateOrderSummary();
+    }
+
+    private void updateOrderSummary() {
+        StringBuilder summary = new StringBuilder();
+        totalAmount = 0;
+
+        for (OrderItem item : orderItems) {
+            summary.append(item.toString()).append("\n");
+            totalAmount += item.getPrice() * item.getQuantity();
+        }
+
+        orderSummaryArea.setText(summary.toString());
+        totalAmountLabel.setText("Total Amount: ₹" + totalAmount);
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(frame, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private String getProductById(int id) {
+        switch (id) {
+            case 1: return "Pen";
+            case 2: return "Notebook";
+            case 3: return "Eraser";
+            case 4: return "Marker";
+            case 5: return "Folder";
+            case 6: return "Pencil";
+            case 7: return "Highlighter";
+            case 8: return "Stapler";
+            case 9: return "Glue";
+            case 10: return "Scissors";
+            default: return "Unknown Product";
         }
     }
 
-    private static void printOrderSummary(Connection conn, int customerId) throws SQLException 
-    {
-        String query = "SELECT c.name AS customer_name, p.name AS product_name, o.quantity, (p.price * o.quantity) AS total_price " +
-                "FROM orders o " +
-                "JOIN customers c ON o.customer_id = c.id " +
-                "JOIN products p ON o.product_id = p.id " +
-                "WHERE o.customer_id = ?";
-
-        try (PreparedStatement pstmt = conn.prepareStatement(query)) 
-        {
-            pstmt.setInt(1, customerId);
-            try (ResultSet rs = pstmt.executeQuery()) 
-            {
-                int totalAmount = 0;
-                while (rs.next()) 
-                {
-                    String productName = rs.getString("product_name");
-                    int quantity = rs.getInt("quantity");
-                    int totalPrice = rs.getInt("total_price");
-                    totalAmount += totalPrice;
-                    orderTextArea.append("Product: " + productName + ", Quantity: " + quantity + ", Total: " + totalPrice + "\n");
-                }
-                orderTextArea.append("Grand Total: " + totalAmount + "\n");
-            }
+    private int getPriceById(int id) {
+        switch (id) {
+            case 1: return 10;
+            case 2: return 50;
+            case 3: return 5;
+            case 4: return 15;
+            case 5: return 20;
+            case 6: return 5;
+            case 7: return 20;
+            case 8: return 55;
+            case 9: return 25;
+            case 10: return 60;
+            default: return 0;
         }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(StationeryShopGUI::new);
     }
 }
 
-class OrderItem 
-{
-    private Product product;
+class OrderItem {
+    private String name;
+    private int price;
     private int quantity;
 
-    public OrderItem(Product product, int quantity) 
-    {
-        this.product = product;
+    public OrderItem(String name, int price, int quantity) {
+        this.name = name;
+        this.price = price;
         this.quantity = quantity;
     }
 
-    public Product getProduct() 
-    {
-        return product;
+    public int getPrice() {
+        return price;
     }
 
-    public int getQuantity() 
-    {
+    public int getQuantity() {
         return quantity;
+    }
+
+    public void reduceQuantity(int amount) {
+        if (amount <= quantity) {
+            quantity -= amount;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return name + " (₹" + price + " x " + quantity + ")";
     }
 }
